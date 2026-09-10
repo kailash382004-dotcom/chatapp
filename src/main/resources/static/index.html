@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live Chat</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 480px; margin: 40px auto; }
+  #join-panel input { display: block; width: 100%; margin: 8px 0; padding: 8px; box-sizing: border-box; }
+  #chat-panel { display: none; }
+  #messages { list-style: none; padding: 0; height: 350px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+  #messages li { margin-bottom: 8px; }
+  .me { text-align: right; color: #0b5fff; }
+  .them { text-align: left; color: #333; }
+  .system { text-align: center; color: #999; font-size: 0.85em; }
+  #message-form { display: flex; margin-top: 10px; }
+  #message-input { flex: 1; padding: 8px; }
+  button { padding: 8px 16px; }
+</style>
+</head>
+<body>
+
+<h2>Live Chat</h2>
+
+<!-- Step 1: enter name + room to join -->
+<div id="join-panel">
+  <input id="username" placeholder="Your name" />
+  <input id="roomId" placeholder="Room ID (both people must use the same one)" />
+  <button onclick="joinRoom()">Join Chat</button>
+</div>
+
+<!-- Step 2: the chat itself -->
+<div id="chat-panel">
+  <p>Room: <strong id="room-label"></strong> — You are: <strong id="user-label"></strong></p>
+  <ul id="messages"></ul>
+  <form id="message-form" onsubmit="sendMessage(event)">
+    <input id="message-input" placeholder="Type a message..." autocomplete="off" />
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<script>
+let stompClient = null;
+let username = '';
+let roomId = '';
+
+function joinRoom() {
+  username = document.getElementById('username').value.trim();
+  roomId = document.getElementById('roomId').value.trim();
+
+  if (!username || !roomId) {
+    alert('Please enter both your name and a room ID.');
+    return;
+  }
+
+  document.getElementById('join-panel').style.display = 'none';
+  document.getElementById('chat-panel').style.display = 'block';
+  document.getElementById('room-label').textContent = roomId;
+  document.getElementById('user-label').textContent = username;
+
+  const socket = new SockJS('/ws-chat');
+  stompClient = Stomp.over(socket);
+  stompClient.debug = null; // quiet console
+
+  stompClient.connect({}, () => {
+    // Subscribe to this room's topic — both participants get every message
+    stompClient.subscribe('/topic/room/' + roomId, (payload) => {
+      const msg = JSON.parse(payload.body);
+      renderMessage(msg);
+    });
+
+    // Announce that we joined
+    stompClient.send('/app/chat/' + roomId, {}, JSON.stringify({
+      roomId: roomId,
+      sender: username,
+      type: 'JOIN'
+    }));
+
+    loadHistory();
+  });
+}
+
+function loadHistory() {
+  fetch('/api/rooms/' + encodeURIComponent(roomId) + '/messages')
+    .then(res => res.json())
+    .then(history => {
+      history.forEach(m => renderMessage({
+        sender: m.sender,
+        content: m.content,
+        type: 'CHAT',
+        sentAt: m.sentAt
+      }));
+    });
+}
+
+function sendMessage(event) {
+  event.preventDefault();
+  const input = document.getElementById('message-input');
+  const content = input.value.trim();
+  if (!content || !stompClient) return;
+
+  stompClient.send('/app/chat/' + roomId, {}, JSON.stringify({
+    roomId: roomId,
+    sender: username,
+    content: content,
+    type: 'CHAT'
+  }));
+
+  input.value = '';
+}
+
+function renderMessage(msg) {
+  const messages = document.getElementById('messages');
+  const li = document.createElement('li');
+
+  if (msg.type === 'JOIN') {
+    li.className = 'system';
+    li.textContent = msg.sender + ' joined the chat';
+  } else if (msg.type === 'LEAVE') {
+    li.className = 'system';
+    li.textContent = msg.sender + ' left the chat';
+  } else {
+    li.className = (msg.sender === username) ? 'me' : 'them';
+    li.textContent = msg.sender + ': ' + msg.content;
+  }
+
+  messages.appendChild(li);
+  messages.scrollTop = messages.scrollHeight;
+}
+</script>
+
+</body>
+</html>
