@@ -2,132 +2,923 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Live Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Private Chat</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
 <style>
-  body { font-family: Arial, sans-serif; max-width: 480px; margin: 40px auto; }
-  #join-panel input { display: block; width: 100%; margin: 8px 0; padding: 8px; box-sizing: border-box; }
-  #chat-panel { display: none; }
-  #messages { list-style: none; padding: 0; height: 350px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
-  #messages li { margin-bottom: 8px; }
-  .me { text-align: right; color: #0b5fff; }
-  .them { text-align: left; color: #333; }
-  .system { text-align: center; color: #999; font-size: 0.85em; }
-  #message-form { display: flex; margin-top: 10px; }
-  #message-input { flex: 1; padding: 8px; }
-  button { padding: 8px 16px; }
+
+/* =========================
+   GLOBAL
+========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", Arial, sans-serif;
+
+    background:
+        radial-gradient(circle at top left, #1e293b, transparent 40%),
+        radial-gradient(circle at bottom right, #312e81, transparent 40%),
+        #09090b;
+
+    color: white;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+}
+
+
+/* =========================
+   MAIN CONTAINER
+========================= */
+
+.container {
+    width: 100%;
+    max-width: 470px;
+}
+
+
+/* =========================
+   JOIN PANEL
+========================= */
+
+#join-panel {
+
+    background: rgba(24, 24, 27, 0.85);
+
+    backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    border-radius: 24px;
+
+    padding: 35px;
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,0.5);
+
+    animation: fadeIn 0.5s ease;
+}
+
+.logo {
+    width: 60px;
+    height: 60px;
+
+    margin: 0 auto 20px;
+
+    border-radius: 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 28px;
+
+    background: linear-gradient(
+        135deg,
+        #6366f1,
+        #8b5cf6
+    );
+
+    box-shadow:
+        0 10px 30px rgba(99,102,241,0.35);
+}
+
+#join-panel h1 {
+    text-align: center;
+    margin: 0;
+
+    font-size: 28px;
+}
+
+.subtitle {
+    text-align: center;
+
+    color: #a1a1aa;
+
+    margin: 8px 0 28px;
+
+    font-size: 14px;
+}
+
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+
+    font-size: 13px;
+
+    color: #a1a1aa;
+
+    margin-bottom: 7px;
+}
+
+#join-panel input {
+
+    width: 100%;
+
+    padding: 14px 15px;
+
+    border-radius: 12px;
+
+    border: 1px solid #27272a;
+
+    background: #18181b;
+
+    color: white;
+
+    outline: none;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+#join-panel input:focus {
+
+    border-color: #6366f1;
+
+    box-shadow:
+        0 0 0 3px rgba(99,102,241,0.15);
+}
+
+#join-panel input::placeholder {
+    color: #71717a;
+}
+
+
+.join-btn {
+
+    width: 100%;
+
+    margin-top: 8px;
+
+    padding: 14px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: linear-gradient(
+        135deg,
+        #6366f1,
+        #8b5cf6
+    );
+
+    color: white;
+
+    font-weight: 600;
+
+    font-size: 15px;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+
+    box-shadow:
+        0 8px 25px rgba(99,102,241,0.25);
+}
+
+.join-btn:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 12px 30px rgba(99,102,241,0.35);
+}
+
+
+/* =========================
+   CHAT PANEL
+========================= */
+
+#chat-panel {
+    display: none;
+
+    height: 650px;
+
+    background: rgba(18,18,21,0.92);
+
+    backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    border-radius: 22px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,0.55);
+
+    animation: fadeIn 0.4s ease;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.chat-header {
+
+    height: 75px;
+
+    padding: 0 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    border-bottom: 1px solid #27272a;
+
+    background: rgba(24,24,27,0.8);
+}
+
+.profile {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+}
+
+.avatar {
+
+    width: 43px;
+    height: 43px;
+
+    border-radius: 50%;
+
+    background: linear-gradient(
+        135deg,
+        #6366f1,
+        #a855f7
+    );
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    font-weight: bold;
+
+    font-size: 17px;
+}
+
+.chat-title {
+    font-weight: 600;
+
+    font-size: 15px;
+}
+
+.online {
+
+    color: #22c55e;
+
+    font-size: 12px;
+
+    margin-top: 2px;
+}
+
+.room-info {
+
+    text-align: right;
+
+    color: #71717a;
+
+    font-size: 11px;
+}
+
+#room-label {
+    color: #a1a1aa;
+}
+
+
+/* =========================
+   MESSAGES
+========================= */
+
+#messages {
+
+    list-style: none;
+
+    margin: 0;
+
+    padding: 20px;
+
+    height: calc(100% - 140px);
+
+    overflow-y: auto;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+
+/* scrollbar */
+
+#messages::-webkit-scrollbar {
+    width: 5px;
+}
+
+#messages::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+
+    border-radius: 10px;
+}
+
+
+/* message */
+
+#messages li {
+
+    max-width: 75%;
+
+    padding: 10px 14px;
+
+    border-radius: 16px;
+
+    font-size: 14px;
+
+    line-height: 1.4;
+
+    animation: messageIn 0.25s ease;
+
+    word-wrap: break-word;
+}
+
+
+/* my message */
+
+#messages .me {
+
+    align-self: flex-end;
+
+    background: linear-gradient(
+        135deg,
+        #6366f1,
+        #7c3aed
+    );
+
+    border-bottom-right-radius: 5px;
+
+    color: white;
+
+    box-shadow:
+        0 5px 15px rgba(99,102,241,0.15);
+}
+
+
+/* other person */
+
+#messages .them {
+
+    align-self: flex-start;
+
+    background: #27272a;
+
+    color: #e4e4e7;
+
+    border-bottom-left-radius: 5px;
+}
+
+
+/* system */
+
+#messages .system {
+
+    align-self: center;
+
+    max-width: 100%;
+
+    color: #71717a;
+
+    font-size: 11px;
+
+    background: transparent;
+
+    padding: 4px 8px;
+}
+
+
+/* =========================
+   MESSAGE FORM
+========================= */
+
+#message-form {
+
+    height: 65px;
+
+    padding: 10px 12px;
+
+    display: flex;
+
+    gap: 10px;
+
+    border-top: 1px solid #27272a;
+
+    background: #18181b;
+}
+
+#message-input {
+
+    flex: 1;
+
+    border: none;
+
+    outline: none;
+
+    background: #27272a;
+
+    color: white;
+
+    border-radius: 25px;
+
+    padding: 0 18px;
+
+    font-size: 14px;
+}
+
+#message-input::placeholder {
+    color: #71717a;
+}
+
+#message-form button {
+
+    width: 44px;
+    height: 44px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: linear-gradient(
+        135deg,
+        #6366f1,
+        #8b5cf6
+    );
+
+    color: white;
+
+    font-size: 18px;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+#message-form button:hover {
+
+    transform: scale(1.08);
+}
+
+
+/* =========================
+   ANIMATIONS
+========================= */
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes messageIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 500px) {
+
+    body {
+        padding: 10px;
+    }
+
+    #chat-panel {
+        height: 90vh;
+
+        border-radius: 18px;
+    }
+
+    #join-panel {
+        padding: 25px 20px;
+    }
+
+    #messages li {
+        max-width: 85%;
+    }
+}
+
 </style>
 </head>
+
+
 <body>
 
-<h2>Live Chat</h2>
+<div class="container">
 
-<!-- Step 1: enter name + room to join -->
+
+<!-- =========================
+     JOIN SCREEN
+========================= -->
+
 <div id="join-panel">
-  <input id="username" placeholder="Your name" />
-  <input id="roomId" placeholder="Room ID (both people must use the same one)" />
-  <button onclick="joinRoom()">Join Chat</button>
+
+    <div class="logo">
+        💬
+    </div>
+
+    <h1>Private Chat</h1>
+
+    <p class="subtitle">
+        Connect privately with someone using a room ID
+    </p>
+
+
+    <div class="input-group">
+
+        <label>Your name</label>
+
+        <input
+            id="username"
+            placeholder="Enter your name"
+            autocomplete="off"
+        >
+
+    </div>
+
+
+    <div class="input-group">
+
+        <label>Room ID</label>
+
+        <input
+            id="roomId"
+            placeholder="Enter room ID"
+            autocomplete="off"
+        >
+
+    </div>
+
+
+    <button
+        class="join-btn"
+        onclick="joinRoom()"
+    >
+        Join Private Chat →
+    </button>
+
 </div>
 
-<!-- Step 2: the chat itself -->
+
+
+<!-- =========================
+     CHAT SCREEN
+========================= -->
+
 <div id="chat-panel">
-  <p>Room: <strong id="room-label"></strong> — You are: <strong id="user-label"></strong></p>
-  <ul id="messages"></ul>
-  <form id="message-form" onsubmit="sendMessage(event)">
-    <input id="message-input" placeholder="Type a message..." autocomplete="off" />
-    <button type="submit">Send</button>
-  </form>
+
+
+    <!-- HEADER -->
+
+    <div class="chat-header">
+
+        <div class="profile">
+
+            <div class="avatar">
+                💬
+            </div>
+
+            <div>
+
+                <div class="chat-title">
+                    Private Chat
+                </div>
+
+                <div class="online">
+                    ● Connected
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="room-info">
+
+            ROOM
+
+            <br>
+
+            <strong id="room-label"></strong>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MESSAGES -->
+
+    <ul id="messages"></ul>
+
+
+
+    <!-- MESSAGE INPUT -->
+
+    <form
+        id="message-form"
+        onsubmit="sendMessage(event)"
+    >
+
+        <input
+            id="message-input"
+            placeholder="Type a message..."
+            autocomplete="off"
+        >
+
+        <button type="submit">
+            ➤
+        </button>
+
+    </form>
+
 </div>
+
+</div>
+
+
 
 <script>
+
 let stompClient = null;
+
 let username = '';
+
 let roomId = '';
 
+
 function joinRoom() {
-  username = document.getElementById('username').value.trim();
-  roomId = document.getElementById('roomId').value.trim();
 
-  if (!username || !roomId) {
-    alert('Please enter both your name and a room ID.');
-    return;
-  }
+    username =
+        document
+        .getElementById('username')
+        .value
+        .trim();
 
-  document.getElementById('join-panel').style.display = 'none';
-  document.getElementById('chat-panel').style.display = 'block';
-  document.getElementById('room-label').textContent = roomId;
-  document.getElementById('user-label').textContent = username;
+    roomId =
+        document
+        .getElementById('roomId')
+        .value
+        .trim();
 
-  const socket = new SockJS('/ws-chat');
-  stompClient = Stomp.over(socket);
-  stompClient.debug = null; // quiet console
 
-  stompClient.connect({}, () => {
-    // Subscribe to this room's topic — both participants get every message
-    stompClient.subscribe('/topic/room/' + roomId, (payload) => {
-      const msg = JSON.parse(payload.body);
-      renderMessage(msg);
+    if (!username || !roomId) {
+
+        alert(
+            'Please enter both your name and a room ID.'
+        );
+
+        return;
+    }
+
+
+    document
+        .getElementById('join-panel')
+        .style.display = 'none';
+
+
+    document
+        .getElementById('chat-panel')
+        .style.display = 'block';
+
+
+    document
+        .getElementById('room-label')
+        .textContent = roomId;
+
+
+    const socket =
+        new SockJS('/ws-chat');
+
+
+    stompClient =
+        Stomp.over(socket);
+
+
+    stompClient.debug = null;
+
+
+    stompClient.connect({}, () => {
+
+        stompClient.subscribe(
+            '/topic/room/' + roomId,
+
+            (payload) => {
+
+                const msg =
+                    JSON.parse(payload.body);
+
+                renderMessage(msg);
+
+            }
+        );
+
+
+        stompClient.send(
+            '/app/chat/' + roomId,
+            {},
+            JSON.stringify({
+
+                roomId: roomId,
+
+                sender: username,
+
+                type: 'JOIN'
+
+            })
+        );
+
+
+        loadHistory();
+
     });
 
-    // Announce that we joined
-    stompClient.send('/app/chat/' + roomId, {}, JSON.stringify({
-      roomId: roomId,
-      sender: username,
-      type: 'JOIN'
-    }));
-
-    loadHistory();
-  });
 }
+
 
 function loadHistory() {
-  fetch('/api/rooms/' + encodeURIComponent(roomId) + '/messages')
+
+    fetch(
+        '/api/rooms/' +
+        encodeURIComponent(roomId) +
+        '/messages'
+    )
+
     .then(res => res.json())
+
     .then(history => {
-      history.forEach(m => renderMessage({
-        sender: m.sender,
-        content: m.content,
-        type: 'CHAT',
-        sentAt: m.sentAt
-      }));
+
+        history.forEach(m => {
+
+            renderMessage({
+
+                sender: m.sender,
+
+                content: m.content,
+
+                type: 'CHAT',
+
+                sentAt: m.sentAt
+
+            });
+
+        });
+
     });
+
 }
+
 
 function sendMessage(event) {
-  event.preventDefault();
-  const input = document.getElementById('message-input');
-  const content = input.value.trim();
-  if (!content || !stompClient) return;
 
-  stompClient.send('/app/chat/' + roomId, {}, JSON.stringify({
-    roomId: roomId,
-    sender: username,
-    content: content,
-    type: 'CHAT'
-  }));
+    event.preventDefault();
 
-  input.value = '';
+
+    const input =
+        document.getElementById(
+            'message-input'
+        );
+
+
+    const content =
+        input.value.trim();
+
+
+    if (!content || !stompClient)
+        return;
+
+
+    stompClient.send(
+
+        '/app/chat/' + roomId,
+
+        {},
+
+        JSON.stringify({
+
+            roomId: roomId,
+
+            sender: username,
+
+            content: content,
+
+            type: 'CHAT'
+
+        })
+
+    );
+
+
+    input.value = '';
+
 }
+
 
 function renderMessage(msg) {
-  const messages = document.getElementById('messages');
-  const li = document.createElement('li');
 
-  if (msg.type === 'JOIN') {
-    li.className = 'system';
-    li.textContent = msg.sender + ' joined the chat';
-  } else if (msg.type === 'LEAVE') {
-    li.className = 'system';
-    li.textContent = msg.sender + ' left the chat';
-  } else {
-    li.className = (msg.sender === username) ? 'me' : 'them';
-    li.textContent = msg.sender + ': ' + msg.content;
-  }
+    const messages =
+        document.getElementById(
+            'messages'
+        );
 
-  messages.appendChild(li);
-  messages.scrollTop = messages.scrollHeight;
+
+    const li =
+        document.createElement('li');
+
+
+    if (msg.type === 'JOIN') {
+
+        li.className = 'system';
+
+        li.textContent =
+            msg.sender +
+            ' joined the chat';
+
+    }
+
+    else if (msg.type === 'LEAVE') {
+
+        li.className = 'system';
+
+        li.textContent =
+            msg.sender +
+            ' left the chat';
+
+    }
+
+    else {
+
+        li.className =
+            (msg.sender === username)
+            ? 'me'
+            : 'them';
+
+
+        li.textContent =
+            msg.sender +
+            ': ' +
+            msg.content;
+
+    }
+
+
+    messages.appendChild(li);
+
+
+    messages.scrollTop =
+        messages.scrollHeight;
+
 }
+
 </script>
 
 </body>
